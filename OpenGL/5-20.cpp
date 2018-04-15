@@ -1,14 +1,9 @@
-#include <GL/glew.h>
-#include "vmath.h"
+#include "OpenGL.h"
 
-#define NULL 0
+#ifdef EX5_20
 
 GLuint program;
-GLuint vao;
-GLuint position_buffer;
-GLuint index_buffer;
-GLint mv_location;
-GLint proj_location;
+GLuint buffer;
 
 int getWindowWidth()
 {
@@ -24,39 +19,34 @@ void onAwake()
 {
 	static const char * vs_source[] =
 	{
-		"#version 420 core                                                  \n"
+		"#version 430 core                                                  \n"
 		"                                                                   \n"
-		"in vec4 position;                                                  \n"
-		"                                                                   \n"
-		"out VS_OUT                                                         \n"
+		"layout (binding = 0) uniform area_block                            \n"
 		"{                                                                  \n"
-		"    vec4 color;                                                    \n"
-		"} vs_out;                                                          \n"
+		"    uint counter_value;                                            \n"
+		"};                                                                 \n"
 		"                                                                   \n"
-		"uniform mat4 mv_matrix;                                            \n"
-		"uniform mat4 proj_matrix;                                          \n"
+		"out vec4 color;                                                    \n"
+		"                                                                   \n"
+		"uniform float max_area;                                            \n"
 		"                                                                   \n"
 		"void main(void)                                                    \n"
 		"{                                                                  \n"
-		"    gl_Position = proj_matrix * mv_matrix * position;              \n"
-		"    vs_out.color = position * 2.0 + vec4(0.5, 0.5, 0.5, 0.0);      \n"
+		"    float brightness = clamp(float(counter_value) / max_area,      \n"
+		"                       0.0, 1.0);                                  \n"
+		"    color = vec4(brightness, brightness, brightness, 1.0);         \n"
 		"}                                                                  \n"
 	};
 
 	static const char * fs_source[] =
 	{
-		"#version 420 core                                                  \n"
+		"#version 430 core                                                  \n"
 		"                                                                   \n"
-		"out vec4 color;                                                    \n"
-		"                                                                   \n"
-		"in VS_OUT                                                          \n"
-		"{                                                                  \n"
-		"    vec4 color;                                                    \n"
-		"} fs_in;                                                           \n"
+		"layout (binding = 0, offset = 0) uniform atomic_uint area;         \n"
 		"                                                                   \n"
 		"void main(void)                                                    \n"
 		"{                                                                  \n"
-		"    color = fs_in.color;                                           \n"
+		"    atomicCounterIncrement(area);                                  \n"
 		"}                                                                  \n"
 	};
 
@@ -69,115 +59,50 @@ void onAwake()
 	glShaderSource(vs, 1, vs_source, NULL);
 	glCompileShader(vs);
 
+	CheckShaderCompileError(fs);
+	CheckShaderCompileError(vs);
+
 	glAttachShader(program, vs);
 	glAttachShader(program, fs);
 
 	glLinkProgram(program);
 
-	mv_location = glGetUniformLocation(program, "mv_matrix");
-	proj_location = glGetUniformLocation(program, "proj_matrix");
+	glGenBuffers(1, &buffer);
 
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
+	glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, buffer);
+	glBufferData(GL_ATOMIC_COUNTER_BUFFER, 16 * sizeof(GLuint), NULL, GL_DYNAMIC_COPY);
 
-	static const GLushort vertex_indices[] =
-	{
-		0, 1, 2,
-		2, 1, 3,
-		2, 3, 4,
-		4, 3, 5,
-		4, 5, 6,
-		6, 5, 7,
-		6, 7, 0,
-		0, 7, 1,
-		6, 0, 2,
-		2, 4, 6,
-		7, 5, 3,
-		7, 3, 1
-	};
+	glBindBufferBase(GL_ATOMIC_COUNTER_BUFFER, 3, buffer);
 
-	static const GLfloat vertex_positions[] =
-	{
-		-0.25f, -0.25f, -0.25f,
-		-0.25f,  0.25f, -0.25f,
-		0.25f, -0.25f, -0.25f,
-		0.25f,  0.25f, -0.25f,
-		0.25f, -0.25f,  0.25f,
-		0.25f,  0.25f,  0.25f,
-		-0.25f, -0.25f,  0.25f,
-		-0.25f,  0.25f,  0.25f,
-	};
+	const GLuint zero = 0;
+	glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, buffer);
 
-	glGenBuffers(1, &position_buffer);
-	glBindBuffer(GL_ARRAY_BUFFER, position_buffer);
-	glBufferData(GL_ARRAY_BUFFER,
-		sizeof(vertex_positions),
-		vertex_positions,
-		GL_STATIC_DRAW);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, NULL);
-	glEnableVertexAttribArray(0);
+	// 방법 1 - glBufferSubData를 사용하여 어토믹 카운터를 리셋한다.
+	glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 2 * sizeof(GLuint), sizeof(GLuint), &zero);
 
-	glGenBuffers(1, &index_buffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, index_buffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER,
-		sizeof(vertex_indices),
-		vertex_indices,
-		GL_STATIC_DRAW);
+	// 방법 2 - 버퍼를 매핑하여 직접 값을 쓴다
+	//GLuint *data = (GLuint *)glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, 16 * sizeof(GLuint), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT);
+	//data[2] = 0;
+	//glUnmapBuffer(GL_ATOMIC_COUNTER_BUFFER);
 
-	glEnable(GL_CULL_FACE);
-	// glFrontFace(GL_CW);
-
-	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LEQUAL);
+	//// 방법 3 - glCelarBufferSubData를 사용한다.
+	//glClearBufferSubData(GL_ATOMIC_COUNTER_BUFFER,
+	//	GL_R32UI,
+	//	2 * sizeof(GLuint),
+	//	sizeof(GLuint),
+	//	GL_RED_INTEGER, GL_UNSIGNED_INT, &zero);
 }
+
+
 
 void onUpdate(double current_time)
 {
-	int i;
-	static const GLfloat green[] = { 0.0f, 0.25f, 0.0f, 1.0f };
-	static const GLfloat one = 1.0f;
-
-	glViewport(0, 0, getWindowWidth(), getWindowHeight());
-	glClearBufferfv(GL_COLOR, 0, green);
-	glClearBufferfv(GL_DEPTH, 0, &one);
-
-	glUseProgram(program);
-
-	vmath::mat4 proj_matrix = vmath::perspective(50.0f,
-		(float)getWindowWidth() / (float)getWindowHeight(),
-		0.1f,
-		1000.0f);
-	glUniformMatrix4fv(proj_location, 1, GL_FALSE, proj_matrix);
-
-#ifdef MANY_CUBES
-	for (i = 0; i < 24; i++)
-	{
-		float f = (float)i + (float)current_time * 0.3f;
-		vmath::mat4 mv_matrix = vmath::translate(0.0f, 0.0f, -20.0f) *
-			vmath::rotate((float)current_time * 45.0f, 0.0f, 1.0f, 0.0f) *
-			vmath::rotate((float)current_time * 21.0f, 1.0f, 0.0f, 0.0f) *
-			vmath::translate(sinf(2.1f * f) * 2.0f,
-				cosf(1.7f * f) * 2.0f,
-				sinf(1.3f * f) * cosf(1.5f * f) * 2.0f);
-		glUniformMatrix4fv(mv_location, 1, GL_FALSE, mv_matrix);
-		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
-	}
-#else
-	float f = (float)current_time * 0.3f;
-	vmath::mat4 mv_matrix = vmath::translate(0.0f, 0.0f, -4.0f) *
-		vmath::translate(sinf(2.1f * f) * 0.5f,
-			cosf(1.7f * f) * 0.5f,
-			sinf(1.3f * f) * cosf(1.5f * f) * 2.0f) *
-		vmath::rotate((float)current_time * 45.0f, 0.0f, 1.0f, 0.0f) *
-		vmath::rotate((float)current_time * 81.0f, 1.0f, 0.0f, 0.0f);
-	glUniformMatrix4fv(mv_location, 1, GL_FALSE, mv_matrix);
-	glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
-#endif
 }
 
 void onShutdown()
 {
-	glDeleteVertexArrays(1, &vao);
 	glDeleteProgram(program);
-	glDeleteBuffers(1, &position_buffer);
+	glDeleteBuffers(1, &buffer);
 }
+
+#endif

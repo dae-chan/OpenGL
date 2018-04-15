@@ -154,7 +154,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="5-20.cpp" />
+    <ClCompile Include="5-4.cpp" />
     <ClCompile Include="OpenGL.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="OpenGL.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
