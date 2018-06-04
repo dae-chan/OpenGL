@@ -24,6 +24,9 @@
     <ClCompile Include="5-4.cpp">
       <Filter>소스 파일</Filter>
     </ClCompile>
+    <ClCompile Include="tutorial4.cpp">
+      <Filter>소스 파일</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="OpenGL.h">
