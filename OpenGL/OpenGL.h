@@ -1,6 +1,6 @@
 #pragma once
 
-#define TUT4
+#define TUT5
 
 #include <GL/glew.h>
 #include <iostream>
