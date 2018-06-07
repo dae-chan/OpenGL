@@ -158,6 +158,7 @@
     <ClCompile Include="OpenGL.cpp" />
     <ClCompile Include="tutorial4.cpp" />
     <ClCompile Include="tutorial5.cpp" />
+    <ClCompile Include="tutorial7.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="OpenGL.h" />
