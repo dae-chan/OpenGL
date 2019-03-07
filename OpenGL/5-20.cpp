@@ -77,15 +77,15 @@ void onAwake()
 	const GLuint zero = 0;
 	glBindBuffer(GL_ATOMIC_COUNTER_BUFFER, buffer);
 
-	// 방법 1 - glBufferSubData를 사용하여 어토믹 카운터를 리셋한다.
+	// Method 1 - Reset atomic counter using glBufferSubData.
 	glBufferSubData(GL_ATOMIC_COUNTER_BUFFER, 2 * sizeof(GLuint), sizeof(GLuint), &zero);
 
-	// 방법 2 - 버퍼를 매핑하여 직접 값을 쓴다
+	// Method 2 - Buffer mapping
 	//GLuint *data = (GLuint *)glMapBufferRange(GL_ATOMIC_COUNTER_BUFFER, 0, 16 * sizeof(GLuint), GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT);
 	//data[2] = 0;
 	//glUnmapBuffer(GL_ATOMIC_COUNTER_BUFFER);
 
-	//// 방법 3 - glCelarBufferSubData를 사용한다.
+	// Method 3 - glCelarBufferSubData
 	//glClearBufferSubData(GL_ATOMIC_COUNTER_BUFFER,
 	//	GL_R32UI,
 	//	2 * sizeof(GLuint),
